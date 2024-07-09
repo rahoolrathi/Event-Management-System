@@ -141,9 +141,12 @@ exports.Signin = async (req, res) => {
                 message: "User not found. Please check your email and try again.",
             });
         }
+        
         //decrypting password
-
-        const isPassword = await bcrypt.compare(password, user.password);
+        let  isPassword=null;
+        
+         if(password){
+            isPassword = await bcrypt.compare(password, user.password);}
         if (!isPassword) {
             return res.status(400).json({
                 status: "error",
@@ -158,7 +161,11 @@ exports.Signin = async (req, res) => {
         });
 
     } catch (error) {
-
+        return res.status(500).json({
+            success: false,
+            message: "An unexpected error occurred while processing your request.",
+            trace: error.message,
+        });
 
     }
 
