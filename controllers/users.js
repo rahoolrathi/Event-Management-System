@@ -6,6 +6,13 @@ exports.signup=async(req,res,next)=>{
 
     try{
         let body=req.body;
+        if (!isValidPassword(body.password)) {
+            return res.status(400).json({
+                status: "fail",
+                message: "Invalid password. Password must be at least 8 characters long and contain a mix of letters, numbers, and symbols."
+            });
+        }
+
     body.password=await bcrypt.hash(body.password,12);
 
     const newUser=await User.create({
@@ -47,4 +54,7 @@ exports.signup=async(req,res,next)=>{
     }
     
 
+}
+function isValidPassword(password) {
+    return /^(?=.*[a-zA-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/.test(password);
 }
