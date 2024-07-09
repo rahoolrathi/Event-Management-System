@@ -1,10 +1,10 @@
-const User=require('../models/users.js')
-const OtpCode=require('../models/otpCode.js')
+const User = require('../models/users.js')
+const OtpCode = require('../models/otpCode.js')
 const bcrypt = require('bcrypt');
-exports.signup=async(req,res)=>{
+exports.signup = async (req, res) => {
 
-    try{
-        let body=req.body;
+    try {
+        let body = req.body;
         //Validating password before encrypting
         if (!isValidPassword(body.password)) {
             return res.status(400).json({
@@ -12,29 +12,29 @@ exports.signup=async(req,res)=>{
                 message: "Invalid password. Password must be at least 8 characters long"
             });
         }
-    
-    //Encryptying
-    body.password=await bcrypt.hash(body.password,12);
 
-    //Stroring new user in db
-    const newUser=await User.create({
-        firstname:body.firstname,
-        lastname:body.lastname,
-        profileImage: body.profileImage,
-        email:body.email,
-        password:body.password
-    })
+        //Encryptying
+        body.password = await bcrypt.hash(body.password, 12);
 
-    res.status(201).json({
-        status:'sucess',
-        message:"User added sucessfully",
-        data:{
-            user:newUser,
-            
-        }
-    });
+        //Stroring new user in db
+        const newUser = await User.create({
+            firstname: body.firstname,
+            lastname: body.lastname,
+            profileImage: body.profileImage,
+            email: body.email,
+            password: body.password
+        })
 
-    }catch (error) {
+        res.status(201).json({
+            status: 'sucess',
+            message: "User added sucessfully",
+            data: {
+                user: newUser,
+
+            }
+        });
+
+    } catch (error) {
         if (error.code === 11000) {
             return res.status(400).json({
                 status: "fail",
@@ -48,11 +48,11 @@ exports.signup=async(req,res)=>{
             trace: error.message
         });
     }
-    
+
 
 }
 function isValidPassword(password) {
-    return password.length>8
+    return password.length > 8
 }
 
 exports.sendOTP = async (req, res) => {
@@ -86,9 +86,9 @@ exports.sendOTP = async (req, res) => {
     }
 };
 
-exports.VerifyOTP=async (req,res)=>{
-    try{
-        const {email, otpCode}=req.body
+exports.VerifyOTP = async (req, res) => {
+    try {
+        const { email, otpCode } = req.body
         //Verifying user 
         let user = await User.findOne({ email: email })
         if (!user) {
@@ -107,7 +107,7 @@ exports.VerifyOTP=async (req,res)=>{
         }
         //if the provided oTP code matched
         console.log(otpData.otpCode)
-        if (otpData.otpCode !==  otpCode) {
+        if (otpData.otpCode !== otpCode) {
             return res.status(400).json({
                 success: false,
                 message: "Invalid OTP Code! Please try again",
@@ -120,12 +120,49 @@ exports.VerifyOTP=async (req,res)=>{
         });
 
     }
-    catch(error){
+    catch (error) {
         return res.status(500).json({
             success: false,
             message: "An unexpected error occurred while processing your request.",
             trace: error.message,
         });
     }
+
+}
+
+exports.Signin = async (req, res) => {
+    try {
+        const { email, password } = req.body;
+        //Verifying user 
+        let user = await User.findOne({ email: email })
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: "User not found. Please check your email and try again.",
+            });
+        }
+        //decrypting password
+
+        const isPassword = await bcrypt.compare(password, user.password);
+        if (!isPassword) {
+            return res.status(400).json({
+                status: "error",
+                message: "Incorrect Password.",
+                trace: `Password: ${isPassword} is incorrect`
+            });
+        }
+        return res.json({
+            status: "success",
+            message: "Login successfully !",
+            data: user
+        });
+
+    } catch (error) {
+
+
+    }
+
+
+
 
 }
