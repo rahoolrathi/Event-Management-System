@@ -6,6 +6,7 @@ dotenv.config({path:'./config.env'})
 
 const port =process.env.PORT||3000
 
+
 mongoose.connect(process.env.DATABASE_URL).then(()=>{
     console.log('Database Connected');
     app.listen(3000,()=>{
