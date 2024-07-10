@@ -1,6 +1,7 @@
 const User = require('../models/users.js')
 const OtpCode = require('../models/otpCode.js')
 const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
 exports.signup = async (req, res) => {
 
     try {
@@ -24,12 +25,16 @@ exports.signup = async (req, res) => {
             email: body.email,
             password: body.password
         })
-
+         const token =jwt.sign({id:newUser._id},process.env.JWT_SECRET,{
+            expiresIn:process.env.JWT_EXPIRES_IN
+         })
         res.status(201).json({
             status: 'sucess',
             message: "User added sucessfully",
+            token,
             data: {
                 user: newUser,
+                
 
             }
         });
@@ -141,6 +146,7 @@ exports.Signin = async (req, res) => {
                 message: "User not found. Please check your email and try again.",
             });
         }
+        //console.log(user.find({name:'rathi'}))
         
         //decrypting password
         let  isPassword=null;
@@ -154,9 +160,13 @@ exports.Signin = async (req, res) => {
                 trace: `Password: ${isPassword} is incorrect`
             });
         }
+        const token =jwt.sign({id:user._id},process.env.JWT_SECRET,{
+            expiresIn:process.env.JWT_EXPIRES_IN
+         })
         return res.json({
             status: "success",
             message: "Login successfully !",
+            token,
             data: user
         });
 
