@@ -1,6 +1,6 @@
 const { isDate, isISO8601 } = require('validator');
-
-const validateEventDetails = (eventDetails) => {
+const Event= require('../models/events.js')
+const validateEventDetails = async(eventDetails) => {
   const { name, date, time, location } = eventDetails;
   
   const errors = [];
@@ -8,6 +8,16 @@ const validateEventDetails = (eventDetails) => {
   if (!name || typeof name !== 'string' || name.trim().length === 0) {
     errors.push('Name is required and must be a non-empty string.');
   }
+  try {
+    const existingEvent = await Event.findOne({ name: name });
+    if (existingEvent) {
+      errors.push('An event with this name already exists.');
+    }
+  } catch (error) {
+    console.error('Error checking event existence:', error);
+    errors.push('Server error while checking event existence.');
+  }
+   
 
   if (!date || !isISO8601(date)) {
     errors.push('A valid date in ISO 8601 format is required.');

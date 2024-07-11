@@ -1,6 +1,6 @@
 const Event= require('../models/events.js')
 const { validateEventDetails } = require('../utils/helper.js');
-
+const User=require('../models/users.js');
 
 
 //1 create Event
@@ -43,12 +43,45 @@ const createEvent=async (req,res)=>{
     }
 }
 //2join Event
+
+const joinEvent=async (req,res)=>{
+  try {
+    console.log(req.params);
+    const eventname=req.params.eventName;
+   
+    const  event=await Event.findOne({name:eventname});
+    if(!event){
+        return res.status(404).json({
+            status: "error",
+            error: "Event not found.",
+        });
+    }
+    if (event.attendees.includes(req.id)) {
+      return res.status(400).json({ status:'Error' ,error: 'User already registered for this event.' });
+    }
+    event.attendees.push(req.id);
+    await event.save();
+    res.status(200).json({ status:"Success",message: 'Event joined  successfully.' });
+  } catch (error) {
+    return res.status(500).json({
+        status: "error",
+        message: "unexpected error",
+        trace: error.message
+    });
+  }
+
+
+
+
+
+}
 //3complete event
 //4 edit event
 //5 delete event
 
 module.exports={
     createEvent,
+    joinEvent
     
 
 }
