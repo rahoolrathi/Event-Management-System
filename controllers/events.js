@@ -16,7 +16,7 @@ const createEvent=async (req,res)=>{
             });
         }
         const datetime=new Date(`${date}T${time}`);
-        console.log(req.id)
+        console.log(req.user.id)
         const newevent=await Event.create({
             name,
             datetime,
@@ -58,10 +58,14 @@ const joinEvent=async (req,res)=>{
             error: "Event not found.",
         });
     }
-    if (event.attendees.includes(req.id)) {
+    console.log(req.user.id)
+    if (event.attendees.includes(req.user.id)) {
       return res.status(400).json({ status:'Error' ,error: 'User already registered for this event.' });
     }
-    event.attendees.push(req.id);
+   
+    event.attendees.push(req.user.id);
+    
+    
     await event.save();
     
     res.status(200).json({ status:"Success",message: 'Event joined  successfully.' });
@@ -178,6 +182,32 @@ const deleteEvent = async (req, res) => {
 };
 
 
+const displayEvents = async (req, res) => {
+    try {
+        const eventname = req.params.eventName;
+        
+       
+        const event = await Event.findOne({ name: eventname }).populate('attendees');
+
+        if (!event) {
+            return res.status(404).json({
+                status: 'error',
+                error: 'Event not found.',
+            });
+        }
+        res.status(200).json({
+            status: 'success',
+            data: event,
+        });
+    } catch (error) {
+        console.error('Error displaying event:', error);
+        res.status(500).json({
+            status: 'error',
+            message: 'Unexpected error',
+            trace: error.message,
+        });
+    }
+};
 
 
 module.exports={
@@ -185,5 +215,6 @@ module.exports={
     joinEvent,
     completeEvent,
   editEvent,
-  deleteEvent
+  deleteEvent,
+  displayEvents
 }
