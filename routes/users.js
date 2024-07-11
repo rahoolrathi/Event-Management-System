@@ -1,10 +1,14 @@
 const express=require('express')
 const userController=require('../controllers/users.js')
 const router=express.Router();
-const  protect  = require('../middleware/authcontoller.js');
+const { handleMultipartData } = require('../utils/multer');
+
 router.post('/signup',userController.signup);
-router.post('/sendotp',protect,userController.sendOTP);
+router.post('/sendotp',userController.sendOTP);
 router.post('/verifyotp',userController.VerifyOTP);
 router.post('/signin',userController.Signin);
+router.post('/upload',handleMultipartData.single('file'),(req,res)=>{
+    res.send('uploaded');
+})
 
 module.exports=router;

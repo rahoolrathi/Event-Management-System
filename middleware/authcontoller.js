@@ -1,7 +1,6 @@
 const jwt = require('jsonwebtoken');
 
 const protectAuth = async (req, res, next) => {
-    // 1) Getting token and check if it's there
     const { authorization } = req.headers;
     if (!authorization) {
         return res.status(401).json({
@@ -12,9 +11,9 @@ const protectAuth = async (req, res, next) => {
 
     try {
         // 2) Verifying token
-        req.token = authorization
+        req.token = authorization.split(" ")[1];
         console.log(req.token)
-        console.log(process.env.JWT_SECRET)
+        console.log(authorization)
         jwt.verify(req.token, process.env.JWT_SECRET, (err, authData) => {
             if (err) {
                 return res.status(401).json({
@@ -24,6 +23,7 @@ const protectAuth = async (req, res, next) => {
                 });
             }
             req.user = authData;
+            console.log(req.user)
             next();
         });
     } catch (error) {
