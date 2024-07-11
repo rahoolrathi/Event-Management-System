@@ -209,6 +209,98 @@ const displayEvents = async (req, res) => {
     }
 };
 
+const minEvents=async(req,res)=>{
+    const {n}=req.params.n;
+    try{
+       const events=await Event.aggregate([{
+        $match:{
+            $expr:{$gte:[{}]}
+        }
+       }])
+    }catch(error){
+
+    }
+}
+
+
+
+
+const getEventsWithMinAttendees = async (req, res) => {
+  try {
+    // Parse the minimum number of attendees from the request parameters
+    const minAttendees = parseInt(req.params.minAttendees, 10);
+
+    // Validate the minAttendees parameter
+    if (isNaN(minAttendees)) {
+      return res.status(400).json({ status: 'error', message: 'Invalid number of attendees' });
+    }
+
+    // Build the aggregation pipeline
+    const events = await Event.aggregate([
+    
+      {
+        $project: {
+          name: 1,
+          datetime: 1,
+          description: 1,
+          location: 1,
+          organizer: 1,
+          attendees: 1,
+          status: 1,
+          attendeesCount: { $size: '$attendees' }
+        }
+      },
+      
+      {
+        $match: {
+          attendeesCount: { $gte: minAttendees }
+        }
+      },
+   
+      {
+        $lookup: {
+          from: 'users',
+          localField: 'attendees',
+          foreignField: '_id',
+          as: 'attendeesDetails'
+        }
+      },
+      
+      {
+        $lookup: {
+          from: 'users',
+          localField: 'organizer',
+          foreignField: '_id',
+          as: 'organizerDetails'
+        }
+      },
+    
+      {
+        $unwind: '$organizerDetails'
+      }
+    ]);
+
+   
+    res.status(200).json({
+      status: 'success',
+      data: {
+        events
+      }
+    });
+  } catch (error) {
+   
+    res.status(500).json({
+      status: 'error',
+      message: 'Unexpected error',
+      trace: error.message
+    });
+  }
+};
+
+module.exports = {
+  getEventsWithMinAttendees
+};
+
 
 module.exports={
     createEvent,
@@ -216,5 +308,5 @@ module.exports={
     completeEvent,
   editEvent,
   deleteEvent,
-  displayEvents
+  displayEvents,getEventsWithMinAttendees
 }
