@@ -184,3 +184,45 @@ exports.Signin = async (req, res) => {
 
 
 }
+
+exports.blockUser = async (req, res) => {
+    try {
+        const { useremail } = req.params;
+        
+        const userToBlock = await User.findOne({email:useremail});
+
+        if (!userToBlock) {
+            return res.status(404).json({
+                status: 'error',
+                message: 'User to block not found'
+            });
+        }
+        
+
+        // Check if user is already blocked
+         const user=await User.findById(req.user.id)
+         console.log(user)
+        if (user.blockedUsers.includes(userToBlock._id)) {
+            return res.status(400).json({
+                status: 'error',
+                message: 'User is already blocked'
+            });
+        }
+        
+
+        // Block the user by adding to blockedUsers array
+        user.blockedUsers.push(userToBlock._id);
+        await user.save();
+
+        res.status(200).json({
+            status: 'success',
+            message: 'User blocked successfully'
+        });
+    } catch (error) {
+        res.status(500).json({
+            status: 'error',
+            message: 'Unexpected error',
+            trace: error.message
+        });
+    }
+};

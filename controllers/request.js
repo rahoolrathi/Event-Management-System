@@ -1,37 +1,46 @@
 const Event= require('../models/events.js')
 const User=require('../models/users.js');
 const Request=require('../models/request.js');
-
 const createRequest = async (req, res) => {
     try {
-      const { recipientemail}=req.params;
-      
-      
-      const recipient = await User.findOne({ email:recipientemail });
-      
-      
-      const requester = req.user;
-      //console.log(`Request ID is ${requester.id}`);
-      //console.log(`recipient ID is ${recipient._id}`);
-  
-      const newRequest = await Request.create({
-        requester: requester.id,
-        recipient: recipient._id,
-      });
-  
-      res.status(201).json({
-        status: 'success',
-        message: 'Request sent successfully',
-        data: newRequest
-      });
+        const { recipientemail } = req.params;
+        
+        const recipient = await User.findOne({ email: recipientemail });
+        if (!recipient) {
+            return res.status(404).json({
+                status: 'error',
+                message: 'Recipient not found'
+            });
+        }
+        
+        // Check if recipient has blocked the requester
+        if (recipient.blockedUsers.includes(req.user.id)) {
+            return res.status(403).json({
+                status: 'error',
+                message: 'Recipient has blocked the requester'
+            });
+        }
+
+        // Proceed with creating the request
+        const newRequest = await Request.create({
+            requester: req.user.id,
+            recipient: recipient._id,
+        });
+
+        res.status(201).json({
+            status: 'success',
+            message: 'Request sent successfully',
+            data: newRequest
+        });
     } catch (error) {
-      res.status(500).json({
-        status: 'error',
-        message: 'Unexpected error',
-        trace: error.message
-      });
+        res.status(500).json({
+            status: 'error',
+            message: 'Unexpected error',
+            trace: error.message
+        });
     }
 };
+
 
 const acceptRequest = async (req, res) => {
     try {
