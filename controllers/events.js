@@ -1,6 +1,7 @@
 const Event= require('../models/events.js')
 const { validateEventDetails } = require('../utils/helper.js');
 const User=require('../models/users.js');
+const Request=require('../models/request.js');
 
 
 //1 create Event
@@ -16,7 +17,7 @@ const createEvent=async (req,res)=>{
             });
         }
         const datetime=new Date(`${date}T${time}`);
-        console.log(req.user.id)
+        //console.log(req.user.id)
         const newevent=await Event.create({
             name,
             datetime,
@@ -47,7 +48,7 @@ const createEvent=async (req,res)=>{
 const joinEvent=async (req,res)=>{
     
   try {
-    console.log(req.params);
+    //console.log(req.params);
     const eventname=req.params.eventName;
    
     const  event=await Event.findOne({name:eventname});
@@ -58,7 +59,7 @@ const joinEvent=async (req,res)=>{
             error: "Event not found.",
         });
     }
-    console.log(req.user.id)
+    //console.log(req.user.id)
     if (event.attendees.includes(req.user.id)) {
       return res.status(400).json({ status:'Error' ,error: 'User already registered for this event.' });
     }
@@ -85,7 +86,7 @@ const completeEvent=async (req,res)=>{
       const eventname=req.params.eventName;
      
       const event = await Event.findOneAndUpdate({name:eventname}, { status: 'complete' }, { new: true });
-      console.log(event)
+    //  console.log(event)
       if(!event){
           return res.status(404).json({
               status: "error",
@@ -118,7 +119,7 @@ const editEvent = async (req, res) => {
         }
 
         const datetime = new Date(`${date}T${time}`);
-        console.log(req.user.id); // Assuming req.user.id is used for organizer ID
+        //console.log(req.user.id); // Assuming req.user.id is used for organizer ID
 
         const updatedEvent = await Event.findByIdAndUpdate(id, {
             name,
@@ -301,6 +302,52 @@ module.exports = {
   getEventsWithMinAttendees
 };
 
+const displayAttendees = async (req, res) => {
+  try {
+    const { recipantemail } = req.params;
+     console.log(recipantemail)
+    const recipient = await User.findOne({ email: recipantemail });
+    if (!recipient) {
+      return res.status(404).json({
+        status: 'error',
+        message: 'Recipient not found'
+      });
+    }
+    const recipantid = recipient._id;
+
+  
+    const requesterid = req.user.id;
+
+
+    const request = await Request.findOne({
+      requester: requesterid,
+      recipient: recipantid,
+      status: "accepted"
+    });
+
+    if (!request) {
+      return res.status(404).json({
+        status: 'error',
+        message: 'Accepted request not found'
+      });
+    }
+
+  
+      const event=await Event.findOne({organizer:recipantid}).populate('attendees','firstname lastname email')
+      console.log(event)
+    res.status(200).json({
+      status: 'success',
+      message: 'Attendance found',
+      data: event.attendees
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: 'error',
+      message: 'Unexpected error',
+      trace: error.message
+    });
+  }
+};
 
 module.exports={
     createEvent,
@@ -308,5 +355,6 @@ module.exports={
     completeEvent,
   editEvent,
   deleteEvent,
-  displayEvents,getEventsWithMinAttendees
+  displayEvents,getEventsWithMinAttendees,
+  displayAttendees
 }

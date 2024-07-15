@@ -46,7 +46,7 @@ exports.signup = async (req, res) => {
                 message: "Email already exists"
             });
         }
-        console.log(error);
+        //console.log(error);
         return res.status(500).json({
             status: "error",
             message: "unexpected error",
@@ -111,7 +111,7 @@ exports.VerifyOTP = async (req, res) => {
             });
         }
         //if the provided oTP code matched
-        console.log(otpData.otpCode)
+        //console.log(otpData.otpCode)
         if (otpData.otpCode !== otpCode) {
             return res.status(400).json({
                 success: false,
@@ -138,7 +138,7 @@ exports.VerifyOTP = async (req, res) => {
 exports.Signin = async (req, res) => {
     try {
         const { email, password } = req.body;
-        console.log(req.headers)
+        //console.log(req.headers)
         //Verifying user 
         let user = await User.findOne({ email: email })
         if (!user) {

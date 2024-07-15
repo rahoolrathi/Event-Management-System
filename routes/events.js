@@ -9,4 +9,5 @@ router.put('/editEvent/:eventName',[protect],EventController.editEvent);
 router.delete('/deleteEvent/:eventName',[protect],EventController.deleteEvent)
 router.get('/displayEvent/:eventName',[protect],EventController.displayEvents); //Popluated users data
 router.get('/getEventsWithMinAttendees/:minAttendees',[protect],EventController.getEventsWithMinAttendees); //Popluated users data
+router.get('/displayAttendees/:recipantemail',[protect],EventController.displayAttendees);
 module.exports=router;
