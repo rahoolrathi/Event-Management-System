@@ -1,8 +1,9 @@
-exports.authenticate=(socket,next)=>{
-    const token=socket.handshake.auth.token;
+const  jwt = require("jsonwebtoken");
+exports.socketauthenticate=(socket,next)=>{
+    const token=socket.handshake.headers.token;
     if(token){
         jwt.verify(
-            socket.handshake.query.token,
+            socket.handshake.headers.token,
             process.env.JWT_SECRET,(err, decoded) => {
               if (err) {
                 return next(new Error("Authentication error"));
