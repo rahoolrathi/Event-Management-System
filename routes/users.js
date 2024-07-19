@@ -7,7 +7,7 @@ router.post('/signup',userController.signup);
 router.post('/sendotp',userController.sendOTP);
 router.post('/verifyotp',userController.VerifyOTP);
 router.post('/signin',userController.Signin);
-router.post('/blockuser/:useremail',[protect],userController.blockUser);
+router.post('/blockuser',[protect],userController.blockUser);
 router.post('/upload',handleMultipartData.single('file'),(req,res)=>{
     res.send('uploaded');
 })

@@ -25,7 +25,7 @@ const usersSchema=new mongoose.Schema({
         required:[true,'Please provide a password'],
        
     },
-    blockedUsers: [{ type: mongoose.Types.ObjectId, ref: 'users' }]
+    
 
 })
 

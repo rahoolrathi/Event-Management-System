@@ -1,6 +1,7 @@
 const Event= require('../models/events.js')
 const User=require('../models/users.js');
 const Request=require('../models/request.js');
+const blockedUsers=require('../models/blockedusers.js');
 const createRequest = async (req, res) => {
     try {
         const { recipientemail } = req.params;
@@ -12,15 +13,21 @@ const createRequest = async (req, res) => {
                 message: 'Recipient not found'
             });
         }
-        
-        // Check if recipient has blocked the requester
-        if (recipient.blockedUsers.includes(req.user.id)) {
+         
+        const blocked=blockedUsers.findOne({from:req.user.id,to:recipient._id})
+        if (blocked) {
             return res.status(403).json({
                 status: 'error',
-                message: 'Recipient has blocked the requester'
+                message: 'You have blocked this Recipient'
             });
         }
-
+        const blockedby=blockedUsers.findOne({from:recipient._id,to:req.user.id})
+        if (blockedby) {
+            return res.status(403).json({
+                status: 'error',
+                message: 'The recipient has blocked you.'
+            });
+        }
         // Proceed with creating the request
         const newRequest = await Request.create({
             requester: req.user.id,
@@ -31,7 +38,7 @@ const createRequest = async (req, res) => {
             status: 'success',
             message: 'Request sent successfully',
             data: newRequest
-        });
+        }); 
     } catch (error) {
         res.status(500).json({
             status: 'error',

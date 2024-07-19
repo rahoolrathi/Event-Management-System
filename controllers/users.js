@@ -2,18 +2,20 @@ const User = require('../models/users.js')
 const OtpCode = require('../models/otpCode.js')
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
+const blockedUsers=require('../models/blockedusers.js');
+const { registeruservalidtions,loginValidtions,emailValidator } = require('../validations/userValidations.js')
 exports.signup = async (req, res) => {
 
     try {
+       
         let body = req.body;
-        //Validating password before encrypting
-        if (!isValidPassword(body.password)) {
-            return res.status(400).json({
-                status: "fail",
-                message: "Invalid password. Password must be at least 8 characters long"
-            });
-        }
-
+        //Validating body before encrypting
+        const { error } = registeruservalidtions.validate(body);
+        if (error){
+            res.status(422).json({
+                status: 'fail',
+                message: error.details[0].message,
+            })}
         //Encryptying
         body.password = await bcrypt.hash(body.password, 12);
 
@@ -25,16 +27,17 @@ exports.signup = async (req, res) => {
             email: body.email,
             password: body.password
         })
-         const token =jwt.sign({id:newUser._id},process.env.JWT_SECRET,{
-            expiresIn:process.env.JWT_EXPIRES_IN
-         })
+        const token = jwt.sign({ id: newUser._id }, process.env.JWT_SECRET, {
+            expiresIn: process.env.JWT_EXPIRES_IN
+        })
+       ;
         res.status(201).json({
             status: 'sucess',
             message: "User added sucessfully",
             token,
             data: {
                 user: newUser,
-                
+
 
             }
         });
@@ -56,9 +59,7 @@ exports.signup = async (req, res) => {
 
 
 }
-function isValidPassword(password) {
-    return password.length > 8
-}
+
 
 exports.sendOTP = async (req, res) => {
     try {
@@ -137,10 +138,16 @@ exports.VerifyOTP = async (req, res) => {
 
 exports.Signin = async (req, res) => {
     try {
-        const { email, password } = req.body;
+        const body = req.body;
+        const { error } = loginValidtions.validate(body);
+        if (error){
+            res.status(422).json({
+                status: 'fail',
+                message: error.details[0].message,
+            })}
         //console.log(req.headers)
         //Verifying user 
-        let user = await User.findOne({ email: email })
+        let user = await User.findOne({ email: body.email })
         if (!user) {
             return res.status(404).json({
                 success: false,
@@ -148,12 +155,11 @@ exports.Signin = async (req, res) => {
             });
         }
         //console.log(user.find({name:'rathi'}))
-        
+
         //decrypting password
-        let  isPassword=null;
-        
-         if(password){
-            isPassword = await bcrypt.compare(password, user.password);}
+     
+        let isPassword = await bcrypt.compare(body.password, user.password);
+    
         if (!isPassword) {
             return res.status(400).json({
                 status: "error",
@@ -161,9 +167,9 @@ exports.Signin = async (req, res) => {
                 trace: `Password: ${isPassword} is incorrect`
             });
         }
-        const token =jwt.sign({id:user._id},process.env.JWT_SECRET,{
-            expiresIn:process.env.JWT_EXPIRES_IN
-         })
+        const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
+            expiresIn: process.env.JWT_EXPIRES_IN
+        })
         return res.json({
             status: "success",
             message: "Login successfully !",
@@ -177,6 +183,7 @@ exports.Signin = async (req, res) => {
             message: "An unexpected error occurred while processing your request.",
             trace: error.message,
         });
+        
 
     }
 
@@ -186,43 +193,51 @@ exports.Signin = async (req, res) => {
 }
 
 exports.blockUser = async (req, res) => {
-    try {
-        const { useremail } = req.params;
-        
-        const userToBlock = await User.findOne({email:useremail});
+    try{
+        const { useremail } = req.body;
+        //validtions done
+        const {error}=emailValidator.validate(useremail);
+        if (error){
+            res.status(422).json({
+                status: 'fail',
+                message: error.details[0].message,
+        })}
 
-        if (!userToBlock) {
+        const userToBlock = await User.find({ email: useremail });
+        
+        if (userToBlock.length===0) {
             return res.status(404).json({
                 status: 'error',
-                message: 'User to block not found'
+                message: 'User not found'
             });
         }
-        
 
-        // Check if user is already blocked
-         const user=await User.findById(req.user.id)
-         console.log(user)
-        if (user.blockedUsers.includes(userToBlock._id)) {
+        //star
+        // console.log(userToBlock._id)
+        const isblocked=await User.find({'$or':[{from:req.user.id,to:userToBlock._id} , {to:req.user.id,from:userToBlock._id} ]});
+        if (isblocked.length!==0) {
             return res.status(400).json({
                 status: 'error',
                 message: 'User is already blocked'
             });
         }
-        
 
-        // Block the user by adding to blockedUsers array
-        user.blockedUsers.push(userToBlock._id);
-        await user.save();
-
-        res.status(200).json({
-            status: 'success',
-            message: 'User blocked successfully'
+        const newblocked = await blockedUsers.create({
+            from: req.user.id,
+            to: userToBlock._id,
         });
-    } catch (error) {
+
+        res.status(201).json({
+            status: 'sucess',
+            message: "User blocked sucessfully",
+        });
+
+    }catch(error){
         res.status(500).json({
             status: 'error',
             message: 'Unexpected error',
             trace: error.message
         });
     }
+    
 };
