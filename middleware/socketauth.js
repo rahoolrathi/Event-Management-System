@@ -8,7 +8,7 @@ exports.socketauthenticate=(socket,next)=>{
               if (err) {
                 return next(new Error("Authentication error"));
               }
-              socket.decoded = decoded; // we are stroing decoded token 
+              socket.decoded = decoded; // we are stroing decoded token  for future use
               socket.userId =  decoded.id //storing decoed token id as user id to identify user
               /*
                why we are using userid if we have already socket.id
@@ -16,7 +16,8 @@ exports.socketauthenticate=(socket,next)=>{
                other issue happened
                userid will remain until token is same so we can use this for feature purpose
               */
-              next();})
+              next();
+            })
                 
     }else{
         next(new Error("Authentication error"));

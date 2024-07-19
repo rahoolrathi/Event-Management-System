@@ -2,10 +2,16 @@ const Event= require('../models/events.js')
 const User=require('../models/users.js');
 const Request=require('../models/request.js');
 const blockedUsers=require('../models/blockedusers.js');
+const {emailValidator}=require('../validations/userValidations.js')
 const createRequest = async (req, res) => {
     try {
-        const { recipientemail } = req.params;
-        
+        const { recipientemail } = req.body;
+         const {error}=emailValidator.validate(recipientemail)
+         if (error){
+          res.status(422).json({
+              status: 'fail',
+              message: error.details[0].message,
+      })}
         const recipient = await User.findOne({ email: recipientemail });
         if (!recipient) {
             return res.status(404).json({
@@ -14,20 +20,29 @@ const createRequest = async (req, res) => {
             });
         }
          
-        const blocked=blockedUsers.findOne({from:req.user.id,to:recipient._id})
-        if (blocked) {
-            return res.status(403).json({
-                status: 'error',
-                message: 'You have blocked this Recipient'
-            });
-        }
-        const blockedby=blockedUsers.findOne({from:recipient._id,to:req.user.id})
-        if (blockedby) {
-            return res.status(403).json({
-                status: 'error',
-                message: 'The recipient has blocked you.'
-            });
-        }
+        const blocked = await blockedUsers.findOne({
+          $or: [
+              { from: req.user.id, to: recipient._id },
+              { from: recipient._id, to: req.user.id }
+          ]
+      });
+      
+      if (blocked) {
+          if (blocked.from === req.user.id) {
+              return res.status(403).json({
+                  status: 'error',
+                  message: 'You have blocked this Recipient'
+              });
+          } else {
+              return res.status(403).json({
+                  status: 'error',
+                  message: 'The recipient has blocked you.'
+              });
+          }
+      }
+      
+      // Proceed with your messaging logic if none of the conditions above are met
+      
         // Proceed with creating the request
         const newRequest = await Request.create({
             requester: req.user.id,
