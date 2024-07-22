@@ -51,3 +51,10 @@ exports.emailValidator=joi.object({
 }).messages({
     'object.unknown': 'Invalid field {#label}'
 });
+
+exports.validateMessage = joi.object({
+    message: joi.string().required().messages({
+      'any.required': 'Message is required.', // Custom error message for required field
+      'string.empty': 'Message cannot be empty.' // Custom error message for empty string
+    })
+  });

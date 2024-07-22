@@ -63,4 +63,4 @@ exports.io=(server)=>{
    })   
 };
 
-exports.sendMessage=io.to(reciver).emit('receiveMessage',content);
+exports.sendMessageIO=(receiver,content)=>io.emit(`receiveMessage-${receiver}`,content);

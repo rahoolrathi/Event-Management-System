@@ -1,5 +1,6 @@
 const { isDate, isISO8601 } = require('validator');
-const Event= require('../models/events.js')
+const Event= require('../models/events.js');
+const message = require('../models/message.js');
 const validateEventDetails = async(eventDetails) => {
   const { name, date, time, location } = eventDetails;
   
