@@ -1,5 +1,5 @@
 const messageSchema=require('../models/message.js');
-const {sendMessageIO}=require('../socket.js');
+const {sendMessageIO,seenMessageIO,notificationCount}=require('../socket.js');
 const userSchema=require('../models/users.js')
 const requestSchema=require('../models/request.js');
 const blockedusersSchema=require('../models/blockedusers.js');
@@ -7,6 +7,7 @@ const {emailValidator,validateMessage}=require('../validations/userValidations.j
 const chatlist=require('../models/chat.js');
 const { media } = require('../utils/multer');
 const message = require('../models/message.js');
+const users = require('../models/users.js');
 
 
 const sendMessage = async (req, res) => {
@@ -64,7 +65,7 @@ const sendMessage = async (req, res) => {
        await chatlist.create({
         participants: [sender, receiver._id],
         channel:channel,
-        last_message:null
+        last_message:null,
     });
     }else{
       channel=ischannel.channel;
@@ -72,7 +73,8 @@ const sendMessage = async (req, res) => {
     const newmessage=await messageSchema.create({
       sender: sender,
       reciver: receiver._id,
-      message: message
+      message: message,
+      channel:channel
     });
     await chatlist.updateOne(
       { channel: channel },
@@ -98,7 +100,7 @@ const deletemessage = async (req, res) => {
       return res.status(400).json({ status: 'fail', message: 'Message ID is required.' });
     }
     await messageSchema.findByIdAndDelete(messageId);
-
+    //notify user to message deleted
     res.status(200).json({ status: 'success', message: 'Message deleted successfully.' });
   } catch (error) {
     console.error('Error in deletemessage:', error);
@@ -108,17 +110,121 @@ const deletemessage = async (req, res) => {
 
 module.exports = deletemessage;
 
-exports.seenMessage=async(req,res)=>{
-  
 
-  //count kerna hn jitna bhi isread true
-},
-exports.unseenMessage=async(req,res)=>{
 
-  //count kerna hn jitna bhi isread false
+const seenMessage = async (req, res) => {
+  try {
+    
+    let { receiver } = req.params;
+    const { isInvalidEmail } = emailValidator.validate(receiver);
+    if (isInvalidEmail) {
+      return res.status(422).json({
+        status: 'fail',
+        message: 'Invalid email format.'
+      });
+    }
+     receiver=await userSchema.findOne({email:receiver});
+    const sender = req.user.id;
+
+   
+    const unseenMessages = await messageSchema.find({
+      $or: [
+        { channel: `${sender}-${receiver._id}`,  },
+        { channel: `${receiver._id}-${sender}`,  }
+      ],
+      isRead:false
+    });
+
+    if (unseenMessages.length > 0) {
+      for (const message of unseenMessages) {
+        await messageSchema.findByIdAndUpdate(message._id, { $set: { isRead: true } });
+        seenMessageIO(message); //notfyin user message is seen
+      }
+    }
+    else{
+      res.status(200).json({
+        status: 'success',
+        message: 'No message found!'
+      });
+    }
+
+   
+    return res.status(200).json({
+      status: 'success',
+      message: `${unseenMessages.length } Messages marked as read.`
+    });
+  } catch (error) {
+    console.error('Error in seenMessage:', error);
+    return res.status(500).json({
+      status: 'error',
+      message: 'Internal server error.'
+    });
+  }
+};
+
+
+  //count kerna hn jitna bhi isread tr
+const unseenMessagecount=async(req,res)=>{
+
+  try {
+    
+    let { receiver } = req.params;
+    const { isInvalidEmail } = emailValidator.validate(receiver);
+    if (isInvalidEmail) {
+      return res.status(422).json({
+        status: 'fail',
+        message: 'Invalid email format.'
+      });
+    }
+    receiver=await userSchema.findOne({email:receiver});
+    const sender = req.user.id;
+
+   
+    const unseenMessages = await messageSchema.find({
+      $or: [
+        { channel: `${sender}-${receiver._id}`,  },
+        { channel: `${receiver._id}-${sender}`,  }
+      ],
+      isRead:false
+    });
+
+    return res.status(200).json({
+      status: 'success',
+      count:unseenMessages.length
+    });
+  } catch (error) {
+    console.error('Error in seenMessage:', error);
+    return res.status(500).json({
+      status: 'error',
+      message: 'Internal server error.'
+    });
+  }
+}
+
+
+const unreadcountchannels=async(req,res)=>{
+  try {  
+    const unreadcount = await chatlist.find({
+      isRead:false});
+      notificationCount(req.user.id,unreadcount.length);
+    return res.status(200).json({
+      status: 'success',
+      count:unreadcount.length
+    });
+    
+  } catch (error) {
+    console.error('Error in counting:', error);
+    return res.status(500).json({
+      status: 'error',
+      message: 'Internal server error.'
+    });
+  }
 }
 module.exports={
   sendMessage,
-  deletemessage
+  deletemessage,
+  seenMessage,
+  unseenMessagecount,unreadcountchannels
+
 
 }

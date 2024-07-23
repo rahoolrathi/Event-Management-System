@@ -1,3 +1,4 @@
+const { boolean } = require('joi');
 const mongoose=require('mongoose');
 
 const messageSchema=new mongoose.Schema({
@@ -10,7 +11,14 @@ const messageSchema=new mongoose.Schema({
   message:{
     type:String,
     require:true
-  }
+  },
+  isRead:{
+    type:Boolean,
+    default:false
+  },
+  channel:{
+    type:String,required:true
+},
 },{
   timestamps:true
 });

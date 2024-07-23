@@ -8,7 +8,11 @@ const chatSchema=new mongoose.Schema({
     },
     last_message:{
         type:mongoose.Schema.Types.ObjectId, ref: "messages"
-    }
+    },
+    isRead:{
+        type:Boolean,
+        default:false
+      },
 },{
     timestamps:true
 })

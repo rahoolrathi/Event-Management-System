@@ -64,3 +64,5 @@ exports.io=(server)=>{
 };
 
 exports.sendMessageIO=(receiver,content)=>io.emit(`receiveMessage-${receiver}`,content);
+exports.DeleteMessageIO=(receiver,content)=>io.emit(`receiveMessage-${receiver}`,content);
+exports.seenMessageIO=(message)=>io.emit(`seenMessage-${message._id}`,message);
