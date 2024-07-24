@@ -1,6 +1,7 @@
 const { boolean, required } = require('joi');
 const mongoose=require('mongoose');
 const { default: isBoolean } = require('validator/lib/isBoolean');
+const {getMongoosePaginatedData}=require('../utils/helper.js')
 
 const messageSchema=new mongoose.Schema({
   sender:{
@@ -28,9 +29,9 @@ const messageSchema=new mongoose.Schema({
   channel:{
     type:String,required:true
 },
- media:{
+ media:[{
   type:String,
- },
+ }],
  deltedby:{
   type:mongoose.Schema.Types.ObjectId,ref:"users",default:null
  },
@@ -45,3 +46,17 @@ const messageSchema=new mongoose.Schema({
 });
 
 module.exports=mongoose.model('messages',messageSchema);
+
+//Methods
+
+exports.findMessages = async ({ query, page, limit, populate }) => {
+  const { data, pagination } = await getMongoosePaginatedData({
+    model: messages,
+    query,
+    page,
+    limit,
+    populate
+  });
+
+  return { result: data, pagination };
+}

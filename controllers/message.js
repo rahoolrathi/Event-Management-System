@@ -12,6 +12,7 @@ const users = require('../models/users.js');
 const {sendMessageValidations}=require('../validations/messageValidtions.js');
 const { getChatListQuery } = require('../query/message.js');
 const {findChats}=require('../models/chat.js');
+const {getMongoosePaginatedData}=require('../utils/helper.js')
 
 const sendMessage = async (req, res) => {
   try {
@@ -117,8 +118,9 @@ const sendMessage = async (req, res) => {
       //step 14 we have to calculate count of unseenMessage
       //step 15 we have to calculate unseenmessagechannels count
       //step 16 send updated unseenMessage and unseenMessage channel count in to real time
+
+
     //step 17 real time emiting message object
-     
     sendMessageIO(receiver._id, newmessage);
     res.status(200).json({ status: 'success', message: 'Message sent successfully.' });
   } catch (error) {
@@ -149,47 +151,62 @@ const deletemessage = async (req, res) => {
 module.exports = deletemessage;
 
 
-
-const seenMessage = async (req, res) => {
+//when user gets message means  (seen all messages))
+const getMessage = async (req, res) => {
   try {
     
     let { receiver } = req.params;
-    const { isInvalidEmail } = emailValidator.validate(receiver);
-    if (isInvalidEmail) {
-      return res.status(422).json({
-        status: 'fail',
-        message: 'Invalid email format.'
-      });
-    }
-     receiver=await userSchema.findOne({email:receiver});
     const sender = req.user.id;
 
-   
-    const unseenMessages = await messageSchema.find({
+     const query={
       $or: [
-        { channel: `${sender}-${receiver._id}`,  },
-        { channel: `${receiver._id}-${sender}`,  }
+        { channel: `${sender}-${receiver}`,  },
+        { channel: `${receiver}-${sender}`,  }
       ],
-      isRead:false
-    });
+      isRead:false,
+      sender: receiver,
+      deletedBy: { $ne: sender }, 
+      flaggedBy: { $ne: sender }
+
+    }
+    const unseenMessages = await messageSchema.find(query);
 
     if (unseenMessages.length > 0) {
       for (const message of unseenMessages) {
         await messageSchema.findByIdAndUpdate(message._id, { $set: { isRead: true } });
         seenMessageIO(message); //notfyin user message is seen
       }
+      //resetting chats
+      let resetChatssender = await ResetchatList(sender)
+      let resetChatsReciever = await ResetchatList(receiver)       
+      resetChatIO( sender, resetChatssender)
+      resetChatIO( receiver, resetChatsReciever)
     }
-    else{
-      res.status(200).json({
-        status: 'success',
-        message: 'No message found!'
-      });
-    }
+    //now we are adding limits for optimise purpose how message to display on screen we will only fetch that message on fronted
+    const page = req.query.page || 1;
+    const limit = req.query.limit || 10;
 
+    //now we have adding limits for optimise purpose 
+    const populate=[{path: 'sender',populate: {path: 'ssn_image profileImage',},},]
+
+    let messagesData =async ({ query, page, limit, populate }) => {
+      const { result, pagination } = await getMongoosePaginatedData({
+        model: messageSchema,
+        query,
+        page,
+        limit,
+        populate
+      });
+      return { result: data, pagination };
+    } 
+    
+    
+  
    
+
     return res.status(200).json({
       status: 'success',
-      message: `${unseenMessages.length } Messages marked as read.`
+      message: `${messagesData } Messages fetched sucessfuly......`
     });
   } catch (error) {
     console.error('Error in seenMessage:', error);
@@ -298,7 +315,7 @@ const ResetchatList=async (userid)=>{
 module.exports={
   sendMessage,
   deletemessage,
-  seenMessage,
+  getMessage,
   unseenMessagecount,unreadcountchannels,
   editMessage
 
