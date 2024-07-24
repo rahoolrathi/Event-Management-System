@@ -134,14 +134,34 @@ const sendMessage = async (req, res) => {
 
 const deletemessage = async (req, res) => {
   try {
-    const messageId = req.params.messageid; 
-    const sender = req.user.id;
+    const {messageId} = req.params; 
+    const userId = req.user.id;
     if (!messageId) {
-      return res.status(400).json({ status: 'fail', message: 'Message ID is required.' });
+      return res.status(404).json({ status: 'fail', message: 'Message ID is required.' });
     }
-    await messageSchema.findByIdAndDelete(messageId);
-    //notify user to message deleted
-    res.status(200).json({ status: 'success', message: 'Message deleted successfully.' });
+    const message=await messageSchema.findById(messageId);
+    if(!message){
+      return res.status(404).json({ status: 'fail', message: 'Message Not found!' });
+    }
+    //if already deleted from one user and that is not me
+    if(message.deletedBy&&message?.deletedBy.toString() !== userId){
+      //then delete it from database
+      const message =await messageSchema.findByIdAndDelete(messageId);
+      if (!message) return next({
+        statusCode: 500,
+        message: 'Message deletion failed!'
+    })
+      res.status(200).json({ status: 'success', message: 'Message deleted successfully.' });
+    }
+
+    //else lets set deleted by true for that message
+
+    message = await messageSchema.findByIdAndUpdate(messageId, { $set: { deletedBy: userId } });
+        if (!message) return next({
+            statusCode: 500,
+            message: 'Message deletion failed!'
+        })
+        res.status(200).json({ status: 'success', message: 'Message deleted successfully.' });
   } catch (error) {
     console.error('Error in deletemessage:', error);
     res.status(500).json({ status: 'error', message: 'Internal server error.' });
@@ -152,7 +172,7 @@ module.exports = deletemessage;
 
 
 //when user gets message means  (seen all messages))
-const getMessage = async (req, res) => {
+const getMessages = async (req, res) => {
   try {
     
     let { receiver } = req.params;
@@ -198,12 +218,7 @@ const getMessage = async (req, res) => {
         populate
       });
       return { result: data, pagination };
-    } 
-    
-    
-  
-   
-
+    }
     return res.status(200).json({
       status: 'success',
       message: `${messagesData } Messages fetched sucessfuly......`
@@ -315,7 +330,7 @@ const ResetchatList=async (userid)=>{
 module.exports={
   sendMessage,
   deletemessage,
-  getMessage,
+  getMessages,
   unseenMessagecount,unreadcountchannels,
   editMessage
 
