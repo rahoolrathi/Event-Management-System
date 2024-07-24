@@ -66,3 +66,9 @@ exports.io=(server)=>{
 exports.sendMessageIO=(receiver,content)=>io.emit(`receiveMessage-${receiver}`,content);
 exports.DeleteMessageIO=(receiver,content)=>io.emit(`receiveMessage-${receiver}`,content);
 exports.seenMessageIO=(message)=>io.emit(`seenMessage-${message._id}`,message);
+exports.notificationCount = ({ count, userId }) => {
+    io.emit(`notification-count-${userId}`, count);
+};
+exports.EditMessageIO=(message)=>io.emit(`EditMessage-${message._id}`,message);
+
+exports.resetChatIO = (chatId, data) => io.emit(`reset-chat-${chatId}`, data);

@@ -1,7 +1,49 @@
 const { isDate, isISO8601 } = require('validator');
 const Event= require('../models/events.js');
 const message = require('../models/message.js');
-const validateEventDetails = async(eventDetails) => {
+
+exports.parseBody = (body) => {
+  //we are using this function for converting body in json object user can send in any format
+  let obj;
+  console.log(body); // For debugging purposes
+
+  if (typeof body === "object") {
+      obj = body; // If body is already an object, assign it directly
+  } else {
+      obj = JSON.parse(body); // If body is a string, parse it into an object
+  }
+
+  return obj; // Return the parsed object
+}
+
+// aggregate pagination with mongoose paginate library
+exports.getMongooseAggregatePaginatedData = async ({
+    model, page = 1, limit = 10, query = [], populate = '', select = '-password', sort = { createdAt: 1 },
+}) => {
+    const options = {
+        select,
+        sort,
+        lean: true,
+        page,
+        populate,
+        limit,
+        customLabels: {
+            totalDocs: 'totalItems',
+            docs: 'data',
+            page: 'currentPage',
+            meta: 'pagination',
+        },
+    };
+
+    const myAggregate = model.aggregate(query);
+    const { data, pagination } = await model.aggregatePaginate(myAggregate, options);
+  
+    delete pagination.limit;
+    delete pagination.pagingCounter;
+
+    return { data, pagination };
+}
+exports.validateEventDetails = async(eventDetails) => {
   const { name, date, time, location } = eventDetails;
   
   const errors = [];
@@ -33,8 +75,4 @@ const validateEventDetails = async(eventDetails) => {
   }
 
   return errors;
-};
-
-module.exports = {
-  validateEventDetails
 };

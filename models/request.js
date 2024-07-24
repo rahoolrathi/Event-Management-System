@@ -5,7 +5,7 @@ const requestSchema=new mongoose.Schema({
         type:mongoose.Schema.Types.ObjectId,ref:'users',required:true
     },
     recipient: { type: mongoose.Schema.Types.ObjectId, ref: 'users', required: true },
-    status: { type: String, enum: ['pending', 'accepted', 'rejected'], default: 'pending' }
+    status: { type: String, enum: ['accepted', 'rejected'], default: 'rejected' }
 })
 
 module.exports=mongoose.model('Request', requestSchema);

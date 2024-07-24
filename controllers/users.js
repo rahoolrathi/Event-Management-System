@@ -226,6 +226,7 @@ exports.blockUser = async (req, res) => {
             from: req.user.id,
             to: userToBlock._id,
         });
+        
 
         res.status(201).json({
             status: 'sucess',

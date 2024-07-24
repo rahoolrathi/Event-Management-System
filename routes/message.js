@@ -9,4 +9,5 @@ router.delete('/deleteMessage/:messageid',[protect],messageController.deletemess
 router.get('/seenMessages/:receiver',[protect],messageController.seenMessage);
 router.get('/unseenMessagecount/:receiver',[protect],messageController.unseenMessagecount);
 router.get('/unreadcountchannels',[protect],messageController.unreadcountchannels);
+router.patch('/editMessage', [protect], messageController.editMessage);
 module.exports=router;

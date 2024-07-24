@@ -1,32 +1,33 @@
 const messageSchema=require('../models/message.js');
-const {sendMessageIO,seenMessageIO,notificationCount}=require('../socket.js');
+const {sendMessageIO,seenMessageIO,notificationCount,EditMessageIO,resetChatIO}=require('../socket.js');
 const userSchema=require('../models/users.js')
 const requestSchema=require('../models/request.js');
 const blockedusersSchema=require('../models/blockedusers.js');
 const {emailValidator,validateMessage}=require('../validations/userValidations.js');
 const chatlist=require('../models/chat.js');
+const {parsebody}=require('../utils/helper.js');
 const { media } = require('../utils/multer');
 const message = require('../models/message.js');
 const users = require('../models/users.js');
-
+const {sendMessageValidations}=require('../validations/messageValidtions.js');
+const { getChatListQuery } = require('../query/message.js');
+const {findChats}=require('../models/chat.js');
 
 const sendMessage = async (req, res) => {
   try {
-    let { receiver, message } = req.body;
-    console.log(receiver)
-    const sender = req.user.id;
-
-      //console.log(req.file.originalname);
-    const { isInvalidEmail } = emailValidator.validate(receiver);
-    if (isInvalidEmail) {
+    //Step 1 parsing body
+    let { receiver,parent, message } = parsebody(req.body);
+    const sender=req.user.id;
+    //step 2 validating body
+    const {error}=sendMessageValidations.validate(req.body);
+    if (error) {
       return res.status(422).json({
         status: 'fail',
-        message: 'Invalid email format.'
+        message: error.details[0].message
       });
     }
-     
-    receiver=await userSchema.findOne({email:receiver})
    
+   //step 3 checking if they are friends or not
     const isFriendsOrBlocked = await requestSchema.findOne({
       $or: [
         { requester: sender, recipient: receiver._id },
@@ -43,45 +44,82 @@ const sendMessage = async (req, res) => {
       return res.status(200).json({ message: "They are not friends or one of them is blocked." });
     }
 
-  
-    const { error } = validateMessage.validate({message});
-    if (error) {
-      return res.status(422).json({
-        status: 'fail',
-        message: error.details[0].message
-      });
-    }
-      console.log(chatlist)
+    //step4 checking channel is exist or not
+
     const ischannel=await chatlist.findOne({
       '$or':[{
-           channel:`${sender}-${receiver._id}`
+           channel:`${sender}-${receiver}`
       },{
-          channel:`${receiver._id}-${sender}`
+          channel:`${receiver}-${sender}`
       }]
     });
+
+    //step 5
+    /*
+    let suppose if one user deleted channel but not both then we have to restore channel again when sender
+    or receiver send message eachother  this is possible only if channel is exist
+
+    logic
+    we are first finding channel  by id and then unset means removing that failed from that channel
+    */
+    if(ischannel){
+      if(ischannel.deletedby){
+        await chatlist.updateOne({_id:ischannel._id},{
+          '$unset':{deletedBy:ischannel.deletedBy}
+        })
+      }
+    }  
+    //step 6 if channel not exit then we are creating channel and asssigning in channel if exist then simple assigning
     let channel;
-    if(!ischannel?.channel){
-      channel = `${sender}-${receiver._id}`;
+    if(!ischannel){
+      channel = `${sender}-${receiver}`;
        await chatlist.create({
-        participants: [sender, receiver._id],
+        participants: [sender, receiver],
         channel:channel,
-        last_message:null,
     });
     }else{
       channel=ischannel.channel;
     }
-    const newmessage=await messageSchema.create({
-      sender: sender,
-      reciver: receiver._id,
-      message: message,
-      channel:channel
-    });
+    //steps 7 creating new message object
+    const messageData={receiver,sender,channel};
+    //creating array if user send any document or something
+    let media=[];
+    if(req.files?.media.length>0){
+      req.files?.media.forEach((file)=>media.push(`messages/${file?.filename}`));
+    }
+   messageData.push(media);
+   //checking it is reply of any message or direct message
+   if(parent){
+    message.parent=parent;
+   }
+   else{
+    messageData.message=message;
+   }
+
+    let newmessage=await messageSchema.create(messageData);
+
+    //step 8 update last message in chatlist
+
     await chatlist.updateOne(
       { channel: channel },
       { $set: { last_message: newmessage._id } }
     );
+    //step 9 now we have reset chatlist of sender and receiver 
+    let resetchatsender=await ResetchatList(sender);
+    let resetchatreceiver=await ResetchatList(receiver);
+    //step 10 real time emiting of resetchat objects
+    resetChatIO(sender,resetchatsender);
+    resetChatIO(receiver,resetchatreceiver);
+    //step 11 populates messsage object object all fields lke from message populate sender,sender images,otjer
+    newmessage=await messageSchema.findById(newmessage.id).populate({
+      path:'sender',populate:{path:'ssn_image profileImage'}}).populate('parent');
 
-    sendMessageIO(receiver._id, message);
+      //step 14 we have to calculate count of unseenMessage
+      //step 15 we have to calculate unseenmessagechannels count
+      //step 16 send updated unseenMessage and unseenMessage channel count in to real time
+    //step 17 real time emiting message object
+     
+    sendMessageIO(receiver._id, newmessage);
     res.status(200).json({ status: 'success', message: 'Message sent successfully.' });
   } catch (error) {
     
@@ -220,11 +258,49 @@ const unreadcountchannels=async(req,res)=>{
     });
   }
 }
+
+const editMessage=async(req,res)=>{
+    try {
+      let { messageid, message } = req.body;
+
+      const { error } = validateMessage.validate({message});
+      if (error) {
+        return res.status(422).json({
+          status: 'fail',
+          message: error.details[0].message
+        });
+      }
+        
+     const newmessage=await messageSchema.findByIdAndUpdate(messageid,{message:message, isEdited:true});
+      EditMessageIO(newmessage);
+      res.status(200).json({ status: 'success', message: 'Message Edited successfully.' });
+    } catch (error) {
+      
+      console.error('Error in sendMessage:', error);
+      res.status(500).json({ status: 'error', message: 'Internal server error.' });
+    }
+  };
+const ResetchatList=async (userid)=>{
+  const query=getChatListQuery(userid);
+  const page=1;
+  const limit=100;
+  const populate= [{path: 'sender',populate: {path: 'ssn_image profileImage',},},]
+  try {
+    const chats = await findChats({ query, page, limit,populate});
+      return chats
+} catch (error) {
+    next(new Error(error.message));
+}
+
+
+
+}
 module.exports={
   sendMessage,
   deletemessage,
   seenMessage,
-  unseenMessagecount,unreadcountchannels
+  unseenMessagecount,unreadcountchannels,
+  editMessage
 
 
 }

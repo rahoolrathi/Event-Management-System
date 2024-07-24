@@ -43,7 +43,7 @@ const createRequest = async (req, res) => {
       }
       
       // Proceed with your messaging logic if none of the conditions above are met
-      console.log(recipientemail)
+      
         // Proceed with creating the request
         const newRequest = await Request.create({
             requester: req.user.id,
