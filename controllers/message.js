@@ -1,19 +1,18 @@
 const messageSchema=require('../models/message.js');
-const {sendMessageIO,seenMessageIO,notificationCount,EditMessageIO,resetChatIO}=require('../socket.js');
-const userSchema=require('../models/users.js')
+const {sendMessageIO,seenMessageIO,unSeenMessageCountChannel,addreactionIO,EditMessageIO,resetChatIO,deleteMessageForAllIO,unSeenMessageCount
+
+}=require('../socket.js');
+
 const requestSchema=require('../models/request.js');
 const blockedusersSchema=require('../models/blockedusers.js');
-const {emailValidator,validateMessage}=require('../validations/userValidations.js');
+const {validateMessage}=require('../validations/userValidations.js');
 const chatlist=require('../models/chat.js');
 const {parsebody}=require('../utils/helper.js');
-const { media } = require('../utils/multer');
-const message = require('../models/message.js');
-const users = require('../models/users.js');
 const {sendMessageValidations}=require('../validations/messageValidtions.js');
 const { getChatListQuery } = require('../query/message.js');
 const {findChats}=require('../models/chat.js');
 const {getMongoosePaginatedData}=require('../utils/helper.js')
-
+//done
 const sendMessage = async (req, res) => {
   try {
     //Step 1 parsing body
@@ -116,12 +115,17 @@ const sendMessage = async (req, res) => {
       path:'sender',populate:{path:'ssn_image profileImage'}}).populate('parent');
 
       //step 14 we have to calculate count of unseenMessage
+      const receiverCount =  await  messageSchema.countDocuments({receiver,isRead:false})
       //step 15 we have to calculate unseenmessagechannels count
-      //step 16 send updated unseenMessage and unseenMessage channel count in to real time
-
-
-    //step 17 real time emiting message object
+      const unSeenMessageCountByChannel=await messageSchema.countDocuments({receiver,channel,isRead:false})
+      //step 16 real time emiting message object
     sendMessageIO(receiver._id, newmessage);
+      //step 17 send updated unseenMessage and unseenMessage channel count in to real time
+      unSeenMessageCount(receiver, receiverCount);
+      unSeenMessageCountChannel(receiver,unSeenMessageCountByChannel,channel)
+
+   
+  
     res.status(200).json({ status: 'success', message: 'Message sent successfully.' });
   } catch (error) {
     
@@ -131,7 +135,7 @@ const sendMessage = async (req, res) => {
 };
 
 
-
+//delete message from me done
 const deletemessage = async (req, res) => {
   try {
     const {messageId} = req.params; 
@@ -145,12 +149,12 @@ const deletemessage = async (req, res) => {
     }
     //if already deleted from one user and that is not me
     if(message.deletedBy&&message?.deletedBy.toString() !== userId){
-      //then delete it from database
-      const message =await messageSchema.findByIdAndDelete(messageId);
-      if (!message) return next({
-        statusCode: 500,
-        message: 'Message deletion failed!'
-    })
+      //then delete it from database 
+      //const message =await messageSchema.findByIdAndDelete(messageId);
+      //instead of hard delete we are doing soft delete just bt setting isdeleteforeveryone= true
+      const message=await await messageSchema.findByIdAndUpdate(messageId, { $set: { isDeletedForEveryone: true } });
+      if (!message)
+         return res.status(500).json({ status: 'fail', message: 'Message deletion failed!' });
       res.status(200).json({ status: 'success', message: 'Message deleted successfully.' });
     }
 
@@ -168,9 +172,9 @@ const deletemessage = async (req, res) => {
   }
 };
 
-module.exports = deletemessage;
 
 
+//get message done
 //when user gets message means  (seen all messages))
 const getMessages = async (req, res) => {
   try {
@@ -202,6 +206,11 @@ const getMessages = async (req, res) => {
       resetChatIO( sender, resetChatssender)
       resetChatIO( receiver, resetChatsReciever)
     }
+    delete query.isRead;
+    delete query.sender;
+    //only get messages if message is not deleted for everyone
+    query.isDeletedForEveryone=false;
+
     //now we are adding limits for optimise purpose how message to display on screen we will only fetch that message on fronted
     const page = req.query.page || 1;
     const limit = req.query.limit || 10;
@@ -233,77 +242,104 @@ const getMessages = async (req, res) => {
 };
 
 
-  //count kerna hn jitna bhi isread tr
-const unseenMessagecount=async(req,res)=>{
+//done
 
-  try {
-    
-    let { receiver } = req.params;
-    const { isInvalidEmail } = emailValidator.validate(receiver);
-    if (isInvalidEmail) {
-      return res.status(422).json({
-        status: 'fail',
-        message: 'Invalid email format.'
-      });
+const deletemessageforeveryone=async(req,res)=>{
+  const sender=req.user.id;
+  const {messageid}=req.params;
+  try{
+    let message=messageSchema.findById(messageid);
+    if(!message){
+      return res.status(404).json({ status: 'fail', message: 'Message Not found!' });
     }
-    receiver=await userSchema.findOne({email:receiver});
-    const sender = req.user.id;
-
-   
-    const unseenMessages = await messageSchema.find({
-      $or: [
-        { channel: `${sender}-${receiver._id}`,  },
-        { channel: `${receiver._id}-${sender}`,  }
-      ],
-      isRead:false
-    });
-
+    if(message.sender.toString()!=sender){
+      return res.status(401).json({ status: 'fail', message: 'Message owner can only delete the message!' });
+    }
+    //we are soft deleting message may be required backup in future
+    message = await messageSchema.findByIdAndUpdate(messageid, { $set: { isDeletedForEveryone: true } });
+    deleteMessageForAllIO(message);
     return res.status(200).json({
       status: 'success',
-      count:unseenMessages.length
+      message: ` Messages Deleted sucessfuly......`
     });
-  } catch (error) {
-    console.error('Error in seenMessage:', error);
+  }catch(error){
     return res.status(500).json({
       status: 'error',
       message: 'Internal server error.'
     });
   }
+
+  
+
+
 }
 
 
-const unreadcountchannels=async(req,res)=>{
-  try {  
-    const unreadcount = await chatlist.find({
-      isRead:false});
-      notificationCount(req.user.id,unreadcount.length);
-    return res.status(200).json({
-      status: 'success',
-      count:unreadcount.length
-    });
-    
-  } catch (error) {
-    console.error('Error in counting:', error);
-    return res.status(500).json({
-      status: 'error',
-      message: 'Internal server error.'
-    });
+  //count kerna hn jitna bhi isread tr
+
+
+
+const clearchat=async(req,res)=>{
+try{
+  const {receiver}=req.params;
+  const  sender=req.user.id;
+  const Messages=await messageSchema.find({'$or':[
+    {channel:`${sender}-${receiver}`},{channel:`${receiver}-${sender}`}
+  ]});
+  if(Messages.length===0){
+    return res.status(404).json({
+      status:'fail',
+      message:'messages not found!'
+    })
   }
+  Messages.forEach(async(m)=>{
+    if (Types.ObjectId.isValid(m.deletedBy) && m?.deletedBy.toString() !== loginUser) {
+      // check if one user has already deleted message, then delete from db
+      await messageSchema.findByIdAndUpdate(m?._id,{$set:{isDeletedForEveryone:true}});
+  } else {
+      // if not deleted earlier from one side, then update deleteBy from loginUser
+      await messageSchema.findByIdAndUpdate(m?._id, { $set: { deletedBy: loginUser } });
+  }
+  });
+
+  return res.status(200).json({
+    status: 'success',
+    message: ` chat cleared sucessfuly......`
+  });
+//i think we should have to use socket there 
+}catch(error){
+  return res.status(500).json({
+    status: 'error',
+    message: 'Internal server error.'
+  });
+
 }
 
+
+}
 const editMessage=async(req,res)=>{
     try {
-      let { messageid, message } = req.body;
-
-      const { error } = validateMessage.validate({message});
+      //step 1 get message from req.body
+      let { messageid, newmessage } = parsebody(req.body);
+      const sender=req.user.id;
+      //step 2 find message by message id
+      let message=messageSchema.findById(messageid);
+      if(!message){
+        return res.status(404).json({ status: 'fail', message: 'Message Not found!' });
+      }
+      //step 3 validate new message
+      const { error } = validateMessage.validate({newmessage});
       if (error) {
         return res.status(422).json({
           status: 'fail',
           message: error.details[0].message
         });
       }
-        
-     const newmessage=await messageSchema.findByIdAndUpdate(messageid,{message:message, isEdited:true});
+      //step 4 check only login user could edit self message
+      if(message.sender.toString()!=sender){
+        return res.status(401).json({ status: 'fail', message: 'Message owner can only edit this message!' });
+      }
+      const updatedmessage=await messageSchema.findByIdAndUpdate(messageid,{message:newmessage, isEdited:true});
       EditMessageIO(newmessage);
       res.status(200).json({ status: 'success', message: 'Message Edited successfully.' });
     } catch (error) {
@@ -312,6 +348,8 @@ const editMessage=async(req,res)=>{
       res.status(500).json({ status: 'error', message: 'Internal server error.' });
     }
   };
+
+  
 const ResetchatList=async (userid)=>{
   const query=getChatListQuery(userid);
   const page=1;
@@ -321,18 +359,106 @@ const ResetchatList=async (userid)=>{
     const chats = await findChats({ query, page, limit,populate});
       return chats
 } catch (error) {
-    next(new Error(error.message));
+  res.status(500).json({ status: 'error', message: 'Internal server error.' });
 }
 
 
+
+}
+
+const deletechatbox=async(req,res)=>{
+  const sender = req.user.id;
+    const { receiver } = req.params;
+    const query = {
+        $or: [
+            { channel: `${sender}-${receiver}` },
+            { channel: `${receiver}-${sender}` }
+        ]
+    }
+
+    try {
+        const messages = await messageSchema.find(query);
+        if (messages?.length === 0)  res.status(200).json({
+            statusCode: 401,
+            message: 'Messages not found!'
+        });
+        messages.forEach(async (msg) => {
+          if (Types.ObjectId.isValid(msg?.deletedBy) && msg?.deletedBy.toString() !== loginUser) {
+             await messageSchema.findByIdAndUpdate(msg._id,{$set:{isDeletedForEveryone:true}}); 
+          } else {
+              // if not deleted earlier from one side, then update deleteBy from loginUser
+              await messageSchema.findByIdAndUpdate(msg?._id, { $set: { deletedBy: sender } });
+          }
+      })
+      let chat = await chatlist.find(query);
+        // if chat-box is already  udeleted by otherser then remove chat-box
+        if (Types.ObjectId.isValid(chat?.deletedBy) && chat?.deletedBy.toString() !== sender) {
+            // remove chat-box from db
+            chat = await chatlist.findByIdAndDelete(chat._id);
+        } else {
+            // update chat-box
+            
+            chat = await updateChat({ _id: chat?._id }, {
+                $set: { deletedBy: sender }
+            });
+            
+        }
+        res.status(200).json({ status: 'success', message: 'chatbox deleted successfully.' });
+
+}catch(error){
+  res.status(500).json({ status: 'error', message: 'Internal server error.' });
+                
+}}
+const flagMessage = async (req, res, next) => {
+  const userId = req.user.id;
+  const { messageId } = req.params;
+
+  try {
+      const message = await messageSchema.findById(messageId)
+      if (!message) return next({
+          statusCode: 401,
+          message: 'Messages not found!'
+      });
+
+      if (message?.sender.toString() !== userId) {
+          const message = await messageSchema.findByIdAndUpdate(messageId, { $set: { flaggedBy: userId } });
+          res.status(200).json({ status: 'success', message: 'MessageReported successfully.' });
+      }
+  } catch (error) {
+    res.status(500).json({ status: 'error', message: 'Internal server error.' });
+  }
+}
+
+const addmessagereaction=async(req,res)=>{
+  try{
+    const {reactionid,messageid}=parsebody(req.body);
+    const sender=req.user.id;
+    //check if message found or not
+    const message = await messageSchema.findById(messageid)
+    if (!message) return next({
+        statusCode: 401,
+        message: 'Messages not found!'
+    });
+   message= await messageSchema.findOneAndUpdate(messageid,{$set:{addmessagereaction:reactionid}});
+    addreactionIO(message);
+    res.status(200).json({ status: 'success', message: 'Message reaction added ' });
+    //then just add reaction in message
+
+  }catch(error){
+    res.status(500).json({ status: 'error', message: 'Internal server error.' });
+  }
+}
+
+const getchatlist=async(req,res)=>{
 
 }
 module.exports={
   sendMessage,
   deletemessage,
   getMessages,
-  unseenMessagecount,unreadcountchannels,
-  editMessage
-
-
-}
+  deletemessageforeveryone,
+  clearchat,
+  editMessage,
+  deletechatbox,
+  flagMessage,
+  addmessagereaction}

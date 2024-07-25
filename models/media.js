@@ -7,7 +7,7 @@ const mediaSchema = new Schema({
     },
     fileType: { type: String, enum: ["Image", "Video"], default: "Image" },
     userId: {
-      type: Schema.Types.ObjectId,
+      type: Types.ObjectId,
       ref: "users",
       require: true,
     },
@@ -17,3 +17,4 @@ const mediaSchema = new Schema({
   },
 );
 const MediaModel = model("Media", mediaSchema);
+module.exports=MediaModel;

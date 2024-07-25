@@ -14,7 +14,7 @@ const chatSchema=new mongoose.Schema({
         type:Boolean,
         default:false
       },
-    deletedBy: { type: Types.ObjectId, ref: "user" },
+    deletedBy: { type: mongoose.Schema.Types.ObjectId, ref: "user" },
 },{
     timestamps:true
 })

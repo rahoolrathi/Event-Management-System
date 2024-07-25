@@ -72,3 +72,10 @@ exports.notificationCount = ({ count, userId }) => {
 exports.EditMessageIO=(message)=>io.emit(`EditMessage-${message._id}`,message);
 
 exports.resetChatIO = (chatId, data) => io.emit(`reset-chat-${chatId}`, data);
+
+exports.deleteMessageForAllIO = (message) => io.emit(`delete-for-all-${message?._id}`, message);
+
+
+exports.unSeenMessageCount = (receiver, count) => io.emit(`unseen-messages-count-${receiver}`, count);
+
+exports.unSeenMessageCountChannel = (receiver, count,channel) => io.emit(`unseen-read-count-${receiver}`, {count,channel});

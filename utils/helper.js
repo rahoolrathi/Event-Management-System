@@ -43,6 +43,31 @@ exports.getMongooseAggregatePaginatedData = async ({
 
     return { data, pagination };
 }
+exports.getMongoosePaginatedData = async ({
+  model, page = 1, limit = 10, query = {}, populate = '', select = '-password', sort = { createdAt: 1 },
+}) => {
+  const options = {
+      select,
+      sort,
+      populate,
+      lean: true,
+      page,
+      limit,
+      customLabels: {
+          totalDocs: 'totalItems',
+          docs: 'data',
+          page: 'currentPage',
+          meta: 'pagination',
+      },
+  };
+
+  const { data, pagination } = await model.paginate(query, options);
+
+  delete pagination.limit;
+  delete pagination.pagingCounter;
+
+  return { data, pagination };
+}
 exports.validateEventDetails = async(eventDetails) => {
   const { name, date, time, location } = eventDetails;
   

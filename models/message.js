@@ -1,7 +1,7 @@
-const { boolean, required } = require('joi');
+
 const mongoose=require('mongoose');
-const { default: isBoolean } = require('validator/lib/isBoolean');
-const {getMongoosePaginatedData}=require('../utils/helper.js')
+const mongoosePaginate = require('mongoose-paginate-v2');
+const aggregatePaginate = require("mongoose-aggregate-paginate-v2");
 
 const messageSchema=new mongoose.Schema({
   sender:{
@@ -36,27 +36,22 @@ const messageSchema=new mongoose.Schema({
   type:mongoose.Schema.Types.ObjectId,ref:"users",default:null
  },
  deletedforall:{
-  type:isBoolean,default:false,default:null
+  type:Boolean,default:false,default:null
  },
  flaggedby:{
   type:mongoose.Schema.Types.ObjectId,ref:"users",default:null
+ }, isDeletedForEveryone: { type: Boolean, default: false },
+ addreaction:{
+  type:String,
+  default:null
  }
 },{
   timestamps:true
 });
 
+messageSchema.plugin(mongoosePaginate);
+messageSchema.plugin(aggregatePaginate);
 module.exports=mongoose.model('messages',messageSchema);
 
 //Methods
 
-exports.findMessages = async ({ query, page, limit, populate }) => {
-  const { data, pagination } = await getMongoosePaginatedData({
-    model: messages,
-    query,
-    page,
-    limit,
-    populate
-  });
-
-  return { result: data, pagination };
-}
