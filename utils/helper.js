@@ -2,7 +2,7 @@ const { isDate, isISO8601 } = require('validator');
 const Event= require('../models/events.js');
 const message = require('../models/message.js');
 
-exports.parseBody = (body) => {
+exports.parsebody = (body) => {
   //we are using this function for converting body in json object user can send in any format
   let obj;
   console.log(body); // For debugging purposes
@@ -101,3 +101,12 @@ exports.validateEventDetails = async(eventDetails) => {
 
   return errors;
 };
+
+exports.generateResponse = (data, message, res) => {
+  console.log('hello',data);
+  return res.status(STATUS_CODE.OK).send({
+      status:true,
+      data,
+      message,
+  });
+}

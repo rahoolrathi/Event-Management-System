@@ -63,14 +63,18 @@ exports.io=(server)=>{
    })   
 };
 
-exports.sendMessageIO=(receiver,content)=>io.emit(`receiveMessage-${receiver}`,content);
-exports.DeleteMessageIO=(receiver,content)=>io.emit(`receiveMessage-${receiver}`,content);
+exports.sendMessageIO = (receiver, content) => {
+    console.log(`Emitting event: sendmessage-${receiver}`, content);
+    io.emit(`sendmessage-${receiver}`, content);
+  };
+  
+exports.DeleteMessageIO=(receiver,content)=>io.emit(`deletemesssageforme-${receiver}`,content);
 exports.seenMessageIO=(message)=>io.emit(`seenMessage-${message._id}`,message);
 exports.notificationCount = ({ count, userId }) => {
     io.emit(`notification-count-${userId}`, count);
 };
 exports.EditMessageIO=(message)=>io.emit(`EditMessage-${message._id}`,message);
-
+exports.addreactionIO=(message)=>io.emit(`addreaction-${message._id}`,message);
 exports.resetChatIO = (chatId, data) => io.emit(`reset-chat-${chatId}`, data);
 
 exports.deleteMessageForAllIO = (message) => io.emit(`delete-for-all-${message?._id}`, message);

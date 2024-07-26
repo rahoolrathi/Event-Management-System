@@ -16,6 +16,7 @@ exports.signup = async (req, res) => {
                 status: 'fail',
                 message: error.details[0].message,
             })}
+         if (req.file) body.image = `users/${req.file.filename}`;
         //Encryptying
         body.password = await bcrypt.hash(body.password, 12);
 

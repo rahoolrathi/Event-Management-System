@@ -2,7 +2,7 @@ const Event= require('../models/events.js')
 const { validateEventDetails } = require('../utils/helper.js');
 const User=require('../models/users.js');
 const Request=require('../models/request.js');
-
+const {addEventToRedis,getEventFromRedis}=require('../queue.js');
 
 //1 create Event
 const createEvent=async (req,res)=>{
@@ -25,6 +25,7 @@ const createEvent=async (req,res)=>{
             location,
             organizer: req.user.id
         });
+      await addEventToRedis(newevent);
         res.status(201).json({
             status: 'success',
             message: "Event Created Sucessfully",
@@ -129,6 +130,7 @@ const editEvent = async (req, res) => {
             organizer: req.user.id
         }, { new: true });
 
+          await addEventToRedis(updatedEvent);
         if (!updatedEvent) {
             return res.status(404).json({
                 status: 'error',
@@ -184,30 +186,47 @@ const deleteEvent = async (req, res) => {
 
 
 const displayEvents = async (req, res) => {
-    try {
-        const eventname = req.params.eventName;
-        
-       
-        const event = await Event.findOne({ name: eventname }).populate('attendees');
+  try {
+      const eventName = req.params.eventName;
+         
+    console.log(eventName);
+      // Check Redis cache first
+      console.log(await getEventFromRedis(eventName));
 
-        if (!event) {
-            return res.status(404).json({
-                status: 'error',
-                error: 'Event not found.',
-            });
-        }
-        res.status(200).json({
-            status: 'success',
-            data: event,
-        });
-    } catch (error) {
-        console.error('Error displaying event:', error);
-        res.status(500).json({
-            status: 'error',
-            message: 'Unexpected error',
-            trace: error.message,
-        });
-    }
+      // if (cachedEvent) {
+      //     return res.status(200).json({
+      //         status: 'success',
+      //         data: cachedEvent,
+      //     });
+      // }
+
+      // If not in cache, fetch from database
+      const event = await Event.findOne({ name: eventName }).populate('attendees');
+
+      if (!event) {
+          return res.status(404).json({
+              status: 'error',
+              error: 'Event not found.',
+          });
+      }
+
+      // Cache the event data
+    
+      await addEventToRedis(event);
+     
+
+      res.status(200).json({
+          status: 'success',
+          data: event,
+      });
+  } catch (error) {
+      console.error('Error displaying event:', error);
+      res.status(500).json({
+          status: 'error',
+          message: 'Unexpected error',
+          trace: error.message,
+      });
+  }
 };
 
 const minEvents=async(req,res)=>{

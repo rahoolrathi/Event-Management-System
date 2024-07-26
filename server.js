@@ -34,12 +34,19 @@ for sharing resuorces on different domain
 by defult jo bhi  request fronted backend ko kerti agr wo different origin pa ha tu browser block kerta ha 
 
 */
-mongoose.set('strictQuery',true);
-mongoose.connect(process.env.DATABASE_URL,{ useNewUrlParser: true, useUnifiedTopology: true }).then(()=>{
-    console.log('Database Connected');
-    server.listen(process.env.PORT,()=>{
-        console.log(`server is runing on port ${port}`)
-    })
-}).catch(()=>console.log("Error in connecting database"))
+
+
+
+mongoose.set('strictQuery', true);
+mongoose.connect('mongodb://127.0.0.1:27017/eventmanagmentsystem', {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+}).then(() => {
+  console.log('Database Connected');
+  server.listen(process.env.PORT || 3000, () => {
+    console.log(`Server is running on port ${process.env.PORT || 3000}`);
+  });
+}).catch((error) => console.log("Error in connecting database:", error));
+
 
 

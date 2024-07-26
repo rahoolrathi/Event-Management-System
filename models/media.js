@@ -1,4 +1,6 @@
 const { Schema, model, Types } = require("mongoose");
+const mongoosePaginate = require('mongoose-paginate-v2');
+const aggregatePaginate = require("mongoose-aggregate-paginate-v2");
 const mediaSchema = new Schema({
   
     file: {
@@ -16,5 +18,7 @@ const mediaSchema = new Schema({
     timestamps: true,
   },
 );
+mediaSchema.plugin(mongoosePaginate);
+mediaSchema.plugin(aggregatePaginate);
 const MediaModel = model("Media", mediaSchema);
 module.exports=MediaModel;

@@ -16,7 +16,7 @@ const messageSchema=new mongoose.Schema({
     default:null
   },
   parent:{
-    type:mongoose.Schema.Types.ObjectId,ref:"messages",required:false,default:false
+    type:mongoose.Schema.Types.ObjectId,ref:"messages",required:false,default:null
   },
   isRead:{
     type:Boolean,
@@ -29,9 +29,7 @@ const messageSchema=new mongoose.Schema({
   channel:{
     type:String,required:true
 },
- media:[{
-  type:String,
- }],
+media: [{ type: String }],
  deltedby:{
   type:mongoose.Schema.Types.ObjectId,ref:"users",default:null
  },
