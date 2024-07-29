@@ -189,32 +189,21 @@ const displayEvents = async (req, res) => {
   try {
       const eventName = req.params.eventName;
          
-    console.log(eventName);
-      // Check Redis cache first
-      console.log(await getEventFromRedis(eventName));
-
-      // if (cachedEvent) {
-      //     return res.status(200).json({
-      //         status: 'success',
-      //         data: cachedEvent,
-      //     });
-      // }
-
-      // If not in cache, fetch from database
+      const cachedEvent = await getEventFromRedis(eventName);
+      if (cachedEvent) {
+          return res.status(200).json({
+              status: 'success',
+              data: cachedEvent,
+          });
+      }
       const event = await Event.findOne({ name: eventName }).populate('attendees');
-
       if (!event) {
           return res.status(404).json({
               status: 'error',
               error: 'Event not found.',
           });
       }
-
-      // Cache the event data
-    
       await addEventToRedis(event);
-     
-
       res.status(200).json({
           status: 'success',
           data: event,
