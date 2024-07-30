@@ -9,7 +9,7 @@ exports.addEventToRedis = async (event) => {
     const eventKey = `event:${event.name}`;
    let result= await redisclient.hSet(eventKey, FIELD,JSON.stringify(event));
     console.log('Returning result:', result);
-    const expirationInSeconds = 30 * 24 * 60 * 60; 
+    const expirationInSeconds = 30 * 2; 
     await redisclient.expire(eventKey, expirationInSeconds);
     
     console.log(`Event added to hash with key ${eventKey} and expiration set for 30 days.`);
@@ -18,7 +18,7 @@ exports.addEventToRedis = async (event) => {
         message: `Event added with key ${eventKey}`,
         key: eventKey
       };
-  } catch (error) {
+  } catch (error) { 
     console.error('Error adding event to Redis:', error);
     return error;
   }

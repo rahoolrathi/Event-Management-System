@@ -1,5 +1,7 @@
 const mongoose=require('mongoose');
 const {getMongooseAggregatePaginatedData}=require('../utils/helper.js')
+const mongoosePaginate = require('mongoose-paginate-v2');
+const aggregatePaginate = require("mongoose-aggregate-paginate-v2");
 const chatSchema=new mongoose.Schema({
     participants:[{
         type:mongoose.Schema.Types.ObjectId, ref: "users", required: true  
@@ -18,12 +20,13 @@ const chatSchema=new mongoose.Schema({
 },{
     timestamps:true
 })
+chatSchema.plugin(mongoosePaginate);
+chatSchema.plugin(aggregatePaginate);
+const chatlist =mongoose.model('chatlist',chatSchema);
 
-module.exports=mongoose.model('chatlist',chatSchema);
 
 //functions 
-
-exports.findChats = async ({ query, page, limit, populate }) => {
+const findChats = async ({ query, page, limit, populate }) => {
     const { data, pagination } = await getMongooseAggregatePaginatedData({
         model: chatlist,
         query,
@@ -31,8 +34,12 @@ exports.findChats = async ({ query, page, limit, populate }) => {
         limit,
         populate,
         sort: { updatedAt: -1 }
-
-    });
-
-    return { result: data, pagination };
+    })
+  return { result: data, pagination };
 }
+
+module.exports={
+    findChats,
+    chatlist
+}
+

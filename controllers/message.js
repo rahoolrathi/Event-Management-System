@@ -6,14 +6,14 @@ const {sendMessageIO,seenMessageIO,unSeenMessageCountChannel,addreactionIO,EditM
 const requestSchema=require('../models/request.js');
 const blockedusersSchema=require('../models/blockedusers.js');
 const {validateMessage}=require('../validations/userValidations.js');
-const chatlist=require('../models/chat.js');
-const {parsebody}=require('../utils/helper.js');
+const {chatlist}=require('../models/chat.js');
+const {parsebody}=require('../utils/helper.js')
 const {sendMessageValidations}=require('../validations/messageValidtions.js');
 const { getChatListQuery } = require('../query/message.js');
-const findChats=require('../models/chat.js');
+const {findChats}=require('../models/chat.js')
 const {getMongoosePaginatedData}=require('../utils/helper.js')
 const MediaModel = require('../models/media.js');
-//done
+//done  and tested
 const sendMessage = async (req, res) => {
   try {
     
@@ -92,14 +92,14 @@ const sendMessage = async (req, res) => {
     const messageData={receiver,sender,channel,media};
 
    //checking it is reply of any message or direct message
-   console.log('----------------');
+  // console.log('----------------');
    if(parent){
     message.parent=parent;
    }
    else{
     messageData.message=message;
    }
-   console.log(parent)
+ //  console.log(parent)
     let newmessage=await messageSchema.create(messageData);
      
     //step 8 update last message in chatlist
@@ -109,7 +109,9 @@ const sendMessage = async (req, res) => {
       { $set: { last_message: newmessage._id } }
     );
     //step 9 now we have reset chatlist of sender and receiver 
+    
     let resetchatsender=await ResetchatList(sender);
+   // console.log(resetchatsender);
     let resetchatreceiver=await ResetchatList(receiver);
     //step 10 real time emiting of resetchat objects
     resetChatIO(sender,resetchatsender);
@@ -118,14 +120,14 @@ const sendMessage = async (req, res) => {
     //step 11 populates messsage object object all fields lke from message populate sender,sender images,otjer
     newmessage=await messageSchema.findById(newmessage.id).populate({
       path:'sender',populate:{path:'ssn_image profileImage'}}).populate('parent');
-      console.log("-----------------helo2")
+
       //step 14 we have to calculate count of unseenMessage
       const receiverCount =  await  messageSchema.countDocuments({receiver,isRead:false})
       //step 15 we have to calculate unseenmessagechannels count
       const unSeenMessageCountByChannel=await messageSchema.countDocuments({receiver,channel,isRead:false})
       //step 16 real time emiting message object
       //console.log(receiver)
-      console.log(sendMessageIO(receiver, newmessage));
+      sendMessageIO(receiver, newmessage);
       //step 17 send updated unseenMessage and unseenMessage channel count in to real time
       unSeenMessageCount(receiver, receiverCount);
       unSeenMessageCountChannel(receiver,unSeenMessageCountByChannel,channel)
@@ -141,7 +143,7 @@ const sendMessage = async (req, res) => {
 };
 
 
-//delete message from me done
+//delete message from me done and tested
 const deletemessage = async (req, res) => {
   try {
     const {messageId} = req.params; 
@@ -167,6 +169,7 @@ const deletemessage = async (req, res) => {
     //else lets set deleted by true for that message
 
     message = await messageSchema.findByIdAndUpdate(messageId, { $set: { deletedBy: userId } });
+
         if (!message) return next({
             statusCode: 500,
             message: 'Message deletion failed!'
@@ -250,6 +253,7 @@ const getMessages = async (req, res) => {
 //done
 
 const deletemessageforeveryone=async(req,res)=>{
+  
   const sender=req.user.id;
   const {messageid}=req.params;
   try{
@@ -257,7 +261,7 @@ const deletemessageforeveryone=async(req,res)=>{
     if(!message){
       return res.status(404).json({ status: 'fail', message: 'Message Not found!' });
     }
-    if(message.sender.toString()!=sender){
+    if(message.sender==sender){
       return res.status(401).json({ status: 'fail', message: 'Message owner can only delete the message!' });
     }
     //we are soft deleting message may be required backup in future
@@ -356,10 +360,14 @@ const editMessage=async(req,res)=>{
 
   
 const ResetchatList=async (userid)=>{
+  console.log("inside reset list function ---------------------------------")
   const query=getChatListQuery(userid);
+  
+  //console.log(query);
   const page=1;
   const limit=100;
-  const populate= [{path: 'sender',populate: {path: 'ssn_image profileImage',},},]
+  const populate= [{path: 'sender',populate: {path: 'ssn_image profileImage'}}]
+ //console.log(`-------------findchats${findChats({ query, page, limit,populate})};`)
   try {
     const chats = await findChats({ query, page, limit,populate});
       return chats

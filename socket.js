@@ -64,7 +64,6 @@ exports.io=(server)=>{
 };
 
 exports.sendMessageIO = (receiver, content) => {
-    console.log(`Emitting event: sendmessage-${receiver}`, content);
     io.emit(`sendmessage-${receiver}`, content);
   };
   
