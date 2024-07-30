@@ -330,22 +330,24 @@ const editMessage=async(req,res)=>{
     try {
       //step 1 get message from req.body
       let { messageid, newmessage } = parsebody(req.body);
+
       const sender=req.user.id;
       //step 2 find message by message id
-      let message=messageSchema.findById(messageid);
+      let message=await messageSchema.findById(messageid);
       if(!message){
         return res.status(404).json({ status: 'fail', message: 'Message Not found!' });
       }
       //step 3 validate new message
-      const { error } = validateMessage.validate({newmessage});
-      if (error) {
-        return res.status(422).json({
-          status: 'fail',
-          message: error.details[0].message
-        });
-      }
+      // const { error } = validateMessage.validate({newmessage});
+      // if (error) {
+      //   return res.status(422).json({
+      //     status: 'fail',
+      //     message: error.details[0].message
+      //   });
+      // }
       //step 4 check only login user could edit self message
-      if(message.sender.toString()!=sender){
+      console.log(message.sender)
+      if(message.sender!=sender){
         return res.status(401).json({ status: 'fail', message: 'Message owner can only edit this message!' });
       }
       const updatedmessage=await messageSchema.findByIdAndUpdate(messageid,{message:newmessage, isEdited:true});
