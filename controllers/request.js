@@ -3,6 +3,7 @@ const User=require('../models/users.js');
 const Request=require('../models/request.js');
 const blockedUsers=require('../models/blockedusers.js');
 const {emailValidator}=require('../validations/userValidations.js')
+const {createAndSendNotification}=require('../models/notification.js');
 const createRequest = async (req, res) => {
     try {
         const { recipientemail } = req.params;
@@ -50,7 +51,21 @@ const createRequest = async (req, res) => {
             recipient: recipient._id,
         });
 
-        res.status(201).json({
+
+
+      const senderObject =  req.user.id;
+      const receiverIds = [recipient._id];
+      const type = "request-sent";
+      const  rec=await User.findById(recipient._id);
+      console.log(rec);
+      let deviceTokens=[]
+      const device_token=rec.device_token;
+      deviceTokens.push(device_token)
+      //console.log("this is channel",channel)
+      const title=`New Friend Request`;
+      const body=`${req.user.id} sent you friend request `;
+      await createAndSendNotification(senderObject, receiverIds, type,deviceTokens,title,body);
+      res.status(201).json({
             status: 'success',
             message: 'Request sent successfully',
             data: newRequest

@@ -5,7 +5,6 @@ const app=require('./app')
 const mongoose=require('mongoose')
 const {io}=require('./socket.js');
 dotenv.config({path:'./config.env'})
-console.log(process.env.PORT)
 const port =process.env.PORT||8000
 const server=http.createServer(app);
 app.use(cors({ origin: 'http://localhost:8000' }))

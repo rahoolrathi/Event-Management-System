@@ -22,7 +22,7 @@ exports.registeruservalidtions = joi.object({
     })
 }).messages({
     'object.unknown': 'Invalid field {#label}'
-});
+})
 
 exports.loginValidtions = joi.object({
     email: joi.string().required().messages({

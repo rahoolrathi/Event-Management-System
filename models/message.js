@@ -30,7 +30,7 @@ const messageSchema=new mongoose.Schema({
     type:String,required:true
 },
 media: [{ type: String }],
- deltedby:{
+deletedBy:{
   type:mongoose.Schema.Types.ObjectId,ref:"users",default:null
  },
  deletedforall:{

@@ -10,12 +10,12 @@ exports.signup = async (req, res) => {
        
         let body = req.body;
         //Validating body before encrypting
-        const { error } = registeruservalidtions.validate(body);
-        if (error){
-            res.status(422).json({
-                status: 'fail',
-                message: error.details[0].message,
-            })}
+        // const { error } = registeruservalidtions.validate(body);
+        // if (error){
+        //     res.status(422).json({
+        //         status: 'fail',
+        //         message: error.details[0].message,
+        //     })}
          if (req.file) body.image = `users/${req.file.filename}`;
         //Encryptying
         body.password = await bcrypt.hash(body.password, 12);
@@ -26,7 +26,8 @@ exports.signup = async (req, res) => {
             lastname: body.lastname,
             profileImage: body.profileImage,
             email: body.email,
-            password: body.password
+            password: body.password,
+            device_token:body?.device_token
         })
         const token = jwt.sign({ id: newUser._id }, process.env.JWT_SECRET, {
             expiresIn: process.env.JWT_EXPIRES_IN

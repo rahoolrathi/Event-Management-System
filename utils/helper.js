@@ -17,35 +17,64 @@ exports.parsebody = (body) => {
 }
 
 // aggregate pagination with mongoose paginate library
+const mongooseAggregatePaginate = require('mongoose-aggregate-paginate-v2');
+
 exports.getMongooseAggregatePaginatedData = async ({
-    model, page = 1, limit = 10, query = [], populate = '', select = '-password', sort = { createdAt: 1 },
+    model, page = 1, limit = 10, query = [], populate = '', select = '-password', sort = { createdAt: -1 },
 }) => {
-    const options = {
-        select,
-        sort,
-        lean: true,
-        page,
-        populate,
-        limit,
-        customLabels: {
-            totalDocs: 'totalItems',
-            docs: 'data',
-            page: 'currentPage',
-            meta: 'pagination',
-        },
-    };
+    try {
+        const options = {
+            select,
+            sort,
+            lean: true,
+            page,
+            populate,
+            limit,
+            customLabels: {
+                totalDocs: 'totalItems',
+                docs: 'data',
+                page: 'currentPage',
+                meta: 'pagination',
+            },
+        };
 
-    const myAggregate = model.aggregate(query);
-    const { data, pagination } = await model.aggregatePaginate(myAggregate, options);
-  
-    delete pagination.limit;
-    delete pagination.pagingCounter;
+        if (typeof model.aggregatePaginate !== 'function') {
+            throw new Error('aggregatePaginate is not a function. Ensure the mongoose-aggregate-paginate-v2 plugin is applied.');
+        }
 
-    return { data, pagination };
-}
+        const myAggregate = model.aggregate(query);
+        const rawResults = await myAggregate.exec();
+        console.log('Raw Aggregation Results:', rawResults);
+
+        const result = await model.aggregatePaginate(myAggregate, options);
+
+        // Check raw result for debugging
+        console.log('Aggregate Paginate Result:', result);
+
+        const { data, pagination } = result;
+
+        // Remove __v key from each document in the data array
+        data.forEach(doc => {
+            delete doc.__v;
+            delete doc.id;
+            return doc;
+        });
+
+        delete pagination.limit;
+        delete pagination.pagingCounter;
+
+        return { data, pagination };
+    } catch (error) {
+        console.error('Error during aggregation:', error);
+        return { data: [], pagination: {} };
+    }
+};
+
+
 exports.getMongoosePaginatedData = async ({
   model, page = 1, limit = 10, query = {}, populate = '', select = '-password', sort = { createdAt: 1 },
 }) => {
+  
   const options = {
       select,
       sort,
@@ -62,7 +91,7 @@ exports.getMongoosePaginatedData = async ({
   };
 
   const { data, pagination } = await model.paginate(query, options);
-
+   
   delete pagination.limit;
   delete pagination.pagingCounter;
 

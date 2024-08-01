@@ -25,6 +25,7 @@ const usersSchema=new mongoose.Schema({
         required:[true,'Please provide a password'],
        
     },
+    device_token: { type: String, default: null  },
     ssn_image: {  type:  mongoose.Schema.Types.ObjectId, ref: 'Media', default: null },
     profileImage: { type:  mongoose.Schema.Types.ObjectId, ref: 'Media', default: null },
     backgroundImage: { type:  mongoose.Schema.Types.ObjectId, ref: 'Media', default: null },
